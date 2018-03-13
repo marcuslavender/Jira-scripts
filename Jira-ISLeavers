@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#Script to create Jira Leaver sub tickets tickets.
+# runs through a list of services in the change request tab of the Master Leaver ticket that need to be disabled.
+
+JIRA_USERNAME=?
+JIRA_PASSWORD=?
+JIRA_HOSTNAME=jira.bgchtest.info
+GETLEAVERINFO="https://${JIRA_HOSTNAME}/rest/api/2/issue/$1"
+LINKISSUE="https://${JIRA_HOSTNAME}/rest/api/2/issueLink"
+CREATETASK="https://${JIRA_HOSTNAME}/rest/servicedeskapi/request/"
+ISSUEURL="https://${JIRA_HOSTNAME}/rest/api/2/issue/"
+
+echo $GETLEAVERINFO
+
+
+GETLEAVERNAME=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11931.displayName')
+GETREPORTERNAME=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.reporter.name')
+GETREPORTEROFFICELOCATION=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_10208.value')
+GETREPORTERCONTACTPREFERENCE=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11913.value')
+
+if [ "$GETREPORTERCONTACTPREFERENCE" == "Slack" ]; then
+        CONTACTDETAILSFIELD="customfield_11918"
+        GETREPORTERCONTACTDETAILS=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11918')
+fi
+
+if [ "$GETREPORTERCONTACTPREFERENCE" == "Email" ]; then
+        CONTACTDETAILSFIELD="customfield_11917"
+        GETREPORTERCONTACTDETAILS=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11917')
+fi
+
+if [ "$GETREPORTERCONTACTPREFERENCE" == "Phone" ]; then
+        CONTACTDETAILSFIELD="customfield_11916"
+        GETREPORTERCONTACTDETAILS=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11916')
+fi
+
+echo "=========="
+curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11914' | awk '{if( $1 ~ /^-/ ) { print $2,$3,$4 }}' |  tr -d '\r'  | while read line; do
+#searches the Change Request tab for items prefixed with a '-' then loops through the list and creates subtickets for these    
+     echo "Ticket Name: leaver "$line" - "$GETLEAVERNAME""
+
+
+SUBTASKISSUEKEY=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"serviceDeskId\":\"1\",\"requestTypeId\":\"88\",\"requestFieldValues\":{\"summary\":\"Leaver $GETLEAVERNAME - Disable $line\",\"customfield_10010\":{\"value\":\"2. Medium\"},\"customfield_10208\":{\"value\":\"$GETREPORTEROFFICELOCATION\"},\"customfield_11913\":{\"value\":\"$GETREPORTERCONTACTPREFERENCE\"},\"$CONTACTDETAILSFIELD\":\"$GETREPORTERCONTACTDETAILS\",\"customfield_11911\":{\"value\":\"Leaver\"}}}" -H 'Content-Type: application/json' --insecure --silent $CREATETASK | jq -r '.issueKey')
+        curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"type\":{\"name\":\"Child-Issue\"},\"inwardIssue\":{\"key\": \"$1\"},\"outwardIssue\":{\"key\": \"$SUBTASKISSUEKEY\"}}" -H 'Content-Type: application/json' --insecure --silent $LINKISSUE
+       curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X PUT --data "{\"fields\":{\"reporter\":{\"name\": \"$GETREPORTERNAME\"},\"assignee\":{\"name\": \"$JIRA_USERNAME\"}}}" -H 'Content-Type: application/json' --insecure --silent $ISSUEURL$SUBTASKISSUEKEY
+
+echo "Ticket Created!"
+        echo "=========="
+done
