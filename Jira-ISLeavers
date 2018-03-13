@@ -18,6 +18,8 @@ GETLEAVERNAME=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: a
 GETREPORTERNAME=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.reporter.name')
 GETREPORTEROFFICELOCATION=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_10208.value')
 GETREPORTERCONTACTPREFERENCE=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11913.value')
+GETISLEAVINGDATE=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json' --insecure --silent "$GETLEAVERINFO" | jq -r '.fields.customfield_11110')
+echo $GETISLEAVINGDATE
 
 if [ "$GETREPORTERCONTACTPREFERENCE" == "Slack" ]; then
         CONTACTDETAILSFIELD="customfield_11918"
@@ -40,7 +42,7 @@ curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json'
      echo "Ticket Name: leaver "$line" - "$GETLEAVERNAME""
 
 
-SUBTASKISSUEKEY=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"serviceDeskId\":\"1\",\"requestTypeId\":\"88\",\"requestFieldValues\":{\"summary\":\"Leaver $GETLEAVERNAME - Disable $line\",\"customfield_10010\":{\"value\":\"2. Medium\"},\"customfield_10208\":{\"value\":\"$GETREPORTEROFFICELOCATION\"},\"customfield_11913\":{\"value\":\"$GETREPORTERCONTACTPREFERENCE\"},\"$CONTACTDETAILSFIELD\":\"$GETREPORTERCONTACTDETAILS\",\"customfield_11911\":{\"value\":\"Leaver\"}}}" -H 'Content-Type: application/json' --insecure --silent $CREATETASK | jq -r '.issueKey')
+SUBTASKISSUEKEY=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"serviceDeskId\":\"1\",\"requestTypeId\":\"88\",\"requestFieldValues\":{\"summary\":\"Leaver $GETLEAVERNAME - Disable $line\",\"customfield_10010\":{\"value\":\"2. Medium\"},\"customfield_10208\":{\"value\":\"$GETREPORTEROFFICELOCATION\"},\"customfield_11913\":{\"value\":\"$GETREPORTERCONTACTPREFERENCE\"},\"$CONTACTDETAILSFIELD\":\"$GETREPORTERCONTACTDETAILS\",\"customfield_11911\":{\"value\":\"Leaver\"},\"customfield_11110\":\"$GETISLEAVINGDATE\"}}" -H 'Content-Type: application/json' --insecure --silent $CREATETASK | jq -r '.issueKey')
         curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"type\":{\"name\":\"Child-Issue\"},\"inwardIssue\":{\"key\": \"$1\"},\"outwardIssue\":{\"key\": \"$SUBTASKISSUEKEY\"}}" -H 'Content-Type: application/json' --insecure --silent $LINKISSUE
        curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X PUT --data "{\"fields\":{\"reporter\":{\"name\": \"$GETREPORTERNAME\"},\"assignee\":{\"name\": \"$JIRA_USERNAME\"}}}" -H 'Content-Type: application/json' --insecure --silent $ISSUEURL$SUBTASKISSUEKEY
 
