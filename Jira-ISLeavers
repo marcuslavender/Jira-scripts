@@ -3,8 +3,8 @@
 #Script to create Jira Leaver sub tickets tickets.
 # runs through a list of services in the change request tab of the Master Leaver ticket that need to be disabled.
 
-JIRA_USERNAME=marcus.lavender
-JIRA_PASSWORD=Pccall1966!
+JIRA_USERNAME=
+JIRA_PASSWORD=
 JIRA_HOSTNAME=jira.bgchtest.info
 GETLEAVERINFO="https://${JIRA_HOSTNAME}/rest/api/2/issue/$1"
 LINKISSUE="https://${JIRA_HOSTNAME}/rest/api/2/issueLink"
