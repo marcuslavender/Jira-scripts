@@ -3,8 +3,8 @@
 #Script to create Jira Leaver sub tickets tickets.
 # runs through a list of services in the change request tab of the Master Leaver ticket that need to be disabled.
 
-JIRA_USERNAME=?
-JIRA_PASSWORD=?
+JIRA_USERNAME=marcus.lavender
+JIRA_PASSWORD=Pccall1966!
 JIRA_HOSTNAME=jira.bgchtest.info
 GETLEAVERINFO="https://${JIRA_HOSTNAME}/rest/api/2/issue/$1"
 LINKISSUE="https://${JIRA_HOSTNAME}/rest/api/2/issueLink"
@@ -41,8 +41,11 @@ curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X GET -H 'Content-Type: application/json'
 #searches the Change Request tab for items prefixed with a '-' then loops through the list and creates subtickets for these    
      echo "Ticket Name: leaver "$line" - "$GETLEAVERNAME""
 
+echo $line
 
 SUBTASKISSUEKEY=$(curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"serviceDeskId\":\"1\",\"requestTypeId\":\"88\",\"requestFieldValues\":{\"summary\":\"Leaver $GETLEAVERNAME - Disable $line\",\"customfield_10010\":{\"value\":\"2. Medium\"},\"customfield_10208\":{\"value\":\"$GETREPORTEROFFICELOCATION\"},\"customfield_11913\":{\"value\":\"$GETREPORTERCONTACTPREFERENCE\"},\"$CONTACTDETAILSFIELD\":\"$GETREPORTERCONTACTDETAILS\",\"customfield_11911\":{\"value\":\"Leaver\"},\"customfield_11110\":\"$GETISLEAVINGDATE\"}}" -H 'Content-Type: application/json' --insecure --silent $CREATETASK | jq -r '.issueKey')
+echo $SUBTASKISSUEKEY
+
         curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X POST --data "{\"type\":{\"name\":\"Child-Issue\"},\"inwardIssue\":{\"key\": \"$1\"},\"outwardIssue\":{\"key\": \"$SUBTASKISSUEKEY\"}}" -H 'Content-Type: application/json' --insecure --silent $LINKISSUE
        curl -u $JIRA_USERNAME:$JIRA_PASSWORD -X PUT --data "{\"fields\":{\"reporter\":{\"name\": \"$GETREPORTERNAME\"},\"assignee\":{\"name\": \"$JIRA_USERNAME\"}}}" -H 'Content-Type: application/json' --insecure --silent $ISSUEURL$SUBTASKISSUEKEY
 
